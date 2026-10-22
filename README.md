@@ -60,7 +60,7 @@ livro.pdf  ──►  leitor escuro  ──►  livro-dark.pdf
 ### 1. Clone o repositório
 
 ```bash
-git clone https://github.com/SEU-USUARIO/pdf-dark.git
+git clone https://github.com/irlansouza93/pdf-dark.git
 cd pdf-dark
 ```
 

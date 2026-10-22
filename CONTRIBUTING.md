@@ -12,7 +12,7 @@ e toda contribuição — código, documentação, tradução ou relato de probl
 ## Preparando o ambiente
 
 ```bash
-git clone https://github.com/SEU-USUARIO/pdf-dark.git
+git clone https://github.com/irlansouza93/pdf-dark.git
 cd pdf-dark
 uv sync
 ```
