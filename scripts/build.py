@@ -57,7 +57,7 @@ def build(argv: list[str] | None = None) -> int:
         "--collect-all",
         "pypdfium2_raw",
         "--hidden-import",
-        "pdf_dark.gui",
+        "pdf_dark.app",
         "--collect-submodules",
         "pdf_dark",
         "--distpath",

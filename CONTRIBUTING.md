@@ -39,7 +39,7 @@ O `uv` cria a `.venv`, instala as dependências de execução e as de desenvolvi
 
    ```bash
    uv run pdf-dark seu-teste.pdf --dpi 100
-   uv run pdf-dark          # interface gráfica
+   uv run pdf-dark --view seu-teste.pdf   # aplicativo de leitura
    ```
 
 5. Faça o commit com uma mensagem clara, no imperativo:
@@ -73,7 +73,7 @@ O `uv` cria a `.venv`, instala as dependências de execução e as de desenvolvi
    ),
    ```
 
-2. A CLI e a GUI passam a listar o tema automaticamente.
+2. A CLI e o aplicativo passam a listar o tema automaticamente.
 3. Adicione um teste em `tests/test_converter.py` verificando as cores geradas.
 
 ## Relatando problemas

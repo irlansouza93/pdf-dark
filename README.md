@@ -1,14 +1,15 @@
 # PDF Dark
 
-Transforme PDFs de fundo branco em documentos com **fundo escuro e texto claro**,
-muito mais confortáveis para quem passa horas lendo.
+Um aplicativo de leitura em **modo escuro** para PDFs, com canvas próprio,
+alternância ao vivo entre claro e escuro e uma ferramenta integrada para exportar
+o documento com o tema aplicado.
 
 O programa aceita qualquer PDF (inclusive digitalizações), aplica um tema escuro
 página por página e gera um novo arquivo pronto para ler no computador, no tablet
-ou no celular — sem precisar de extensões, contas ou internet.
+ou no celular — sem extensões, contas ou internet.
 
 ```
-livro.pdf  ──►  livro-dark.pdf
+livro.pdf  ──►  leitor escuro  ──►  livro-dark.pdf
 ```
 
 ---
@@ -19,6 +20,7 @@ livro.pdf  ──►  livro-dark.pdf
 - [Requisitos](#requisitos)
 - [Instalação](#instalação)
 - [Como usar](#como-usar)
+- [Atalhos do leitor](#atalhos-do-leitor)
 - [Opções da linha de comando](#opções-da-linha-de-comando)
 - [Gerar o executável (sem Python)](#gerar-o-executável-sem-python)
 - [Como funciona](#como-funciona)
@@ -31,15 +33,19 @@ livro.pdf  ──►  livro-dark.pdf
 
 ## Recursos
 
-- **Interface gráfica simples** em Tkinter (já vem com o Python, sem dependências extras).
-- **Linha de comando** para converter um arquivo, uma pasta inteira ou usar em scripts.
+- **Leitor embutido** com canvas próprio: rolagem contínua, zoom, ajuste à largura
+  e modo imersivo em tela cheia (F11), com barra flutuante que se esconde sozinha.
+- **Alternância ao vivo** entre o PDF original e o modo escuro, sem reabrir o arquivo.
+- **Interface escura e minimalista**, sem molduras ou distrações.
+- **Conversão integrada**: um painel lateral exporta o PDF com o tema escolhido,
+  reaproveitando exatamente a mesma renderização do leitor.
 - **Três temas**: cinza escuro, preto puro (ideal para telas OLED) e sépia.
 - **Fotos e ilustrações preservadas** nas cores originais, em vez de virarem negativos.
 - **Tons de cinza por padrão**, com opção de preservar as cores de código,
   gráficos e links (`--color`).
+- **Linha de comando** para converter um arquivo, uma pasta inteira ou usar em scripts.
 - **Gravação incremental**: o PDF é escrito página por página, então o uso de memória
   não cresce com o tamanho do documento.
-- **Ajuste de resolução e qualidade** para equilibrar nitidez e tamanho do arquivo.
 - Funciona em **Windows, macOS e Linux**.
 
 ## Requisitos
@@ -86,19 +92,33 @@ Para desinstalar depois: `uv tool uninstall pdf-dark`.
 
 ## Como usar
 
-### Interface gráfica
-
-A forma mais simples — com duplo clique no executável ou com:
+### Abrir o aplicativo de leitura
 
 ```bash
-uv run pdf-dark
+uv run pdf-dark                    # tela inicial
+uv run pdf-dark --view livro.pdf   # já abre o livro
 ```
 
-1. Clique em **Escolher…** e selecione o PDF.
-2. Confira o nome do arquivo de saída (sugerido automaticamente como `nome-dark.pdf`).
-3. Ajuste o tema e, se quiser, o DPI/qualidade.
-4. Clique em **Converter** e aguarde a barra de progresso.
-5. Ao final, o programa pergunta se deseja abrir o PDF gerado.
+Na tela inicial, clique em **Abrir um PDF** (ou use `Ctrl+O`). O documento já
+aparece em modo escuro; a barra superior concentra o essencial:
+
+- **● Escuro / ○ Claro** alterna o documento ao vivo (`D`).
+- **− 100% +** controla o zoom e **Ajustar** volta a página à largura da janela.
+- **Converter** abre o painel de exportação.
+- **⛶** entra no modo imersivo (`F11`), com a barra flutuante que aparece ao mover
+  o mouse e se esconde após alguns segundos.
+- Arraste a página com o mouse para navegar quando estiver com zoom; a roda rola e
+  `Ctrl` + roda amplia.
+
+### Converter para um arquivo escuro
+
+1. Abra o PDF no leitor.
+2. Clique em **Converter**.
+3. Escolha o tema, a resolução e a qualidade. As mudanças de tema são aplicadas
+   na hora no leitor, como prévia.
+4. Clique em **Converter agora**. O arquivo `nome-dark.pdf` é criado ao lado do
+   original.
+5. Ao terminar, use **Abrir arquivo** ou **Mostrar na pasta**.
 
 ### Linha de comando
 
@@ -125,6 +145,22 @@ uv run pdf-dark livro.pdf --dpi 120
 uv run pdf-dark protegido.pdf --password "minha-senha"
 ```
 
+## Atalhos do leitor
+
+| Atalho | Ação |
+| --- | --- |
+| `Ctrl+O` | Abrir um PDF |
+| `D` | Alternar entre claro e escuro |
+| `F11` | Entrar ou sair do modo imersivo |
+| `Esc` | Fechar o painel de conversão ou sair da tela cheia |
+| `Ctrl` `+` / `Ctrl` `-` | Aumentar ou diminuir o zoom |
+| `Ctrl+0` | Ajustar à largura |
+| `PgUp` / `PgDn`, `←` / `→`, `Espaço` | Página anterior / próxima |
+| `Home` / `End` | Primeira / última página |
+| Roda do mouse | Rolar |
+| `Ctrl` + roda | Ampliar na posição |
+| Arrastar com o mouse | Navegar com zoom aplicado |
+
 ## Opções da linha de comando
 
 | Opção | Padrão | Descrição |
@@ -137,10 +173,11 @@ uv run pdf-dark protegido.pdf --password "minha-senha"
 | `-c`, `--contrast` | `1.0` | Realce do contraste do texto (ex.: `1.2`). |
 | `--color` / `--no-color` | desligado | Mantém o matiz de código/gráficos (`--color`) ou usa tons de cinza. |
 | `--keep-images` / `--no-keep-images` | ligado | Preserva fotos nas cores originais ou escurece tudo. |
-| `--password` | — | Senha, se o PDF estiver protegido. |
+| `--password` | — | Senha, se o PDF estiver protegido (apenas na CLI). |
 | `-f`, `--overwrite` | desligado | Sobrescreve a saída existente. |
 | `--open` | desligado | Abre o PDF gerado ao terminar. |
-| `--gui` | desligado | Abre a interface gráfica. |
+| `--view` | desligado | Abre o aplicativo de leitura com o PDF informado. |
+| `--gui` | desligado | Abre o aplicativo de leitura (equivalente a rodar sem argumentos). |
 | `--version` | — | Mostra a versão. |
 
 ### Escolhendo a resolução
@@ -163,8 +200,8 @@ uv run python scripts/build.py
 O arquivo final fica em `dist/` (`pdf-dark.exe` no Windows, `pdf-dark` no
 Linux/macOS). Basta copiar esse único arquivo para a outra máquina.
 
-- Ao abrir com duplo clique (sem argumentos), a interface gráfica inicia e o
-  console do Windows é escondido automaticamente.
+- Ao abrir com duplo clique (sem argumentos), o aplicativo inicia e o console do
+  Windows é escondido automaticamente.
 - Chamado pelo terminal com argumentos, funciona como a CLI normal.
 - O executável precisa ser gerado **no sistema operacional de destino**:
   Windows gera `.exe`, Linux gera binário Linux, e assim por diante.
@@ -180,6 +217,8 @@ uv run python scripts/make_icon.py
 
 ## Como funciona
 
+### Conversão
+
 1. Cada página é rasterizada com o **PDFium** (o mesmo motor do Chrome) na
    resolução escolhida.
 2. A página é tratada como um mapa de tinta: papel branco vira o fundo do tema e
@@ -194,13 +233,22 @@ uv run python scripts/make_icon.py
    escritor próprio — sem depender de bibliotecas pesadas de PDF e com memória
    constante.
 
+### Leitor
+
+O leitor usa a mesma função de renderização da conversão. As páginas visíveis
+são rasterizadas em uma **thread separada** (a interface nunca trava), com cache
+das últimas 10 páginas e limite de 300 DPI — acima disso, a imagem é ampliada.
+Ao alternar o tema, só as páginas na tela são processadas novamente.
+
 ```
 src/pdf_dark/
+├── app.py         # janela principal, tela inicial e painel de conversão
+├── viewer.py      # canvas do leitor: rolagem, zoom e renderização assíncrona
+├── widgets.py     # paleta e componentes da interface escura
 ├── converter.py   # orquestra leitura, renderização e gravação
 ├── theme.py       # temas e curva de tons (papel/tinta)
 ├── pdfwriter.py   # escritor de PDF incremental
 ├── cli.py         # interface de linha de comando
-├── gui.py         # interface gráfica em Tkinter
 └── assets/        # ícone do aplicativo
 ```
 
@@ -209,8 +257,12 @@ src/pdf_dark/
 - **O PDF gerado é composto por imagens.** O texto continua nítido e legível, mas
   não é mais selecionável, pesquisável ou copiável, e leitores de tela não
   conseguem extraí-lo. Guarde sempre o arquivo original.
-- O tamanho do arquivo cresce com a resolução: um livro de 300 páginas em 150 DPI
-  costuma ficar entre 30 MB e 120 MB. Para reduzir, use `--dpi 120`.
+- **O leitor exibe as páginas como imagens.** Assim como no arquivo gerado, não é
+  possível selecionar texto nem buscar palavras dentro do aplicativo.
+- **PDFs protegidos por senha** não abrem no leitor; use a CLI com `--password`
+  para gerar a versão escura.
+- O tamanho do arquivo gerado cresce com a resolução: um livro de 300 páginas em
+  150 DPI costuma ficar entre 30 MB e 120 MB. Para reduzir, use `--dpi 120`.
 - PDFs que já têm fundo escuro podem ficar estranhos (o programa assume fundo
   branco). Nesse caso, use o original.
 
@@ -218,7 +270,8 @@ src/pdf_dark/
 
 | Problema | Solução |
 | --- | --- |
-| `não foi possível abrir ...` | O arquivo pode estar corrompido ou protegido. Tente `--password`. |
+| `não foi possível abrir ...` | O arquivo pode estar corrompido ou protegido. Na CLI, tente `--password`. |
+| A página demora a aparecer | O zoom está alto ou o PDF tem páginas pesadas; aguarde ou use `Ctrl+0`. |
 | Conversão muito lenta | Reduza `--dpi` (cada página é rasterizada). |
 | Arquivo muito grande | Use `--dpi 120` e reduza `--quality`. |
 | Texto serrilhado | Aumente `--dpi` para 200 ou mais. |
@@ -231,6 +284,7 @@ src/pdf_dark/
 ```bash
 uv sync                 # instala tudo, inclusive as ferramentas de dev
 uv run pytest           # roda os testes
+uv run pdf-dark          # abre o aplicativo
 uv run python -m pdf_dark --help
 ```
 

@@ -93,7 +93,7 @@ def convert_pdf(
             for index in range(total):
                 page = document[index]
                 try:
-                    image = _render_page(page, scale, opts)
+                    image = render_page(page, scale, opts)
                     width_pt, height_pt = page.get_size()
                     jpeg = _encode_page(image, quality)
                     writer.add_page(
@@ -127,12 +127,30 @@ def convert_pdf(
 # ---------------------------------------------------------------------- #
 # Renderização
 # ---------------------------------------------------------------------- #
-def _render_page(
+def render_page(
     page: pdfium.PdfPage,
     scale: float,
-    opts: Options,
+    options: Options | None = None,
+    *,
+    dark: bool = True,
 ) -> Image.Image:
-    """Rasteriza a página e aplica o tema, preservando fotos coloridas."""
+    """Rasteriza uma página do PDF.
+
+    Args:
+        page: página aberta pelo pypdfium2.
+        scale: pixels por ponto (use ``dpi / 72``).
+        options: ajustes de tema e preservação de imagens.
+        dark: com ``True`` aplica o tema escuro; com ``False`` devolve a
+            página original, útil para o modo claro do leitor.
+    """
+    if not dark:
+        bitmap = page.render(scale=scale)
+        try:
+            return bitmap.to_pil().convert("RGB")
+        finally:
+            bitmap.close()
+
+    opts = options or Options()
     boxes = _image_boxes(page, scale) if opts.keep_images else []
     bitmap = page.render(scale=scale)
     try:

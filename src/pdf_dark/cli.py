@@ -32,10 +32,11 @@ def build_parser() -> argparse.ArgumentParser:
         ),
         epilog=(
             "Exemplos:\n"
-            "  pdf-dark livro.pdf\n"
+            "  pdf-dark                         # abre o aplicativo de leitura\n"
+            "  pdf-dark --view livro.pdf        # abre o livro no aplicativo\n"
+            "  pdf-dark livro.pdf               # converte e salva livro-dark.pdf\n"
             "  pdf-dark livro.pdf -o livro-escuro.pdf --dpi 200\n"
             "  pdf-dark artigos/ -o saida/ --theme sepia\n"
-            "  pdf-dark            # abre a interface gráfica\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -124,7 +125,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--gui",
         action="store_true",
-        help="abre a interface gráfica",
+        help="abre o aplicativo de leitura",
+    )
+    parser.add_argument(
+        "--view",
+        action="store_true",
+        help="abre o aplicativo de leitura com o PDF informado",
     )
     parser.add_argument(
         "--version",
@@ -138,10 +144,15 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    if args.gui or not args.inputs:
-        from .gui import main as gui_main
+    if args.gui or args.view or not args.inputs:
+        from .app import main as app_main
 
-        gui_main()
+        initial: str | None = None
+        if args.inputs:
+            candidate = Path(args.inputs[0]).expanduser()
+            if candidate.is_file():
+                initial = str(candidate)
+        app_main([initial] if initial else [])
         return 0
 
     try:
