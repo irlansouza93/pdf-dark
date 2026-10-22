@@ -1,0 +1,7 @@
+# Normaliza fins de linha para LF (exceto binários)
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.pdf binary
+*.exe binary

@@ -1,0 +1,25 @@
+# Ambiente virtual e cache do uv
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Artefatos de build do executável
+build/
+dist/
+*.spec
+
+# Testes e ferramentas
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Sistema operacional / editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Arquivos gerados durante os testes
+*.part
