@@ -35,11 +35,10 @@ livro.pdf  ──►  leitor escuro  ──►  livro-dark.pdf
 
 - **Leitor embutido** com canvas próprio: rolagem contínua, zoom, ajuste à largura
   e modo imersivo em tela cheia (F11), com barra flutuante que se esconde sozinha.
-- **Modo foco (F10)**: janela sem bordas e sem a barra de tarefas, que continua
-  podendo ser movida e redimensionada pela tela — o cabeçalho aparece quando o
-  mouse chega ao topo.
+- **Barra de ferramentas ocultável (F10)**: esconda a barra do aplicativo para ler
+  sem distrações; as bordas normais da janela continuam disponíveis.
 - **Alternância ao vivo** entre o PDF original e o modo escuro, sem reabrir o arquivo.
-- **Interface escura e minimalista**, sem molduras ou distrações.
+- **Interface escura e minimalista**, com barras discretas e sem distrações.
 - **Conversão integrada**: um painel lateral exporta o PDF com o tema escolhido,
   reaproveitando exatamente a mesma renderização do leitor.
 - **Três temas**: cinza escuro, preto puro (ideal para telas OLED) e sépia.
@@ -108,8 +107,8 @@ aparece em modo escuro; a barra superior concentra o essencial:
 - **● Escuro / ○ Claro** alterna o documento ao vivo (`D`).
 - **− 100% +** controla o zoom e **Ajustar** volta a página à largura da janela.
 - **Converter** abre o painel de exportação.
-- **✥** entra no modo foco: janela sem bordas e sem a barra de tarefas, que ainda
-  pode ser movida (veja abaixo).
+- **⌃** esconde a barra de ferramentas do aplicativo (`F10`); use `F10` novamente
+  para mostrá-la.
 - **⛶** entra no modo imersivo (`F11`), com a barra flutuante que aparece ao mover
   o mouse e se esconde após alguns segundos.
 - Arraste a página com o mouse para navegar quando estiver com zoom; a roda rola e
@@ -119,20 +118,14 @@ A janela pode ser reduzida até **560 × 380**. Em janelas estreitas, o cabeçal
 esconde automaticamente o nome do arquivo, o botão **Ajustar** e o indicador de
 página para manter os controles essenciais visíveis.
 
-### Modo foco (janela limpa)
+### Ocultar a barra de ferramentas
 
-Pressione `F10` (ou clique em **✥** no cabeçalho) para ler sem as bordas da janela
-e sem a barra de tarefas, mantendo a liberdade de mover a janela pela tela:
+Pressione `F10` (ou clique em **⌃** no canto direito da barra) para esconder a barra
+do aplicativo e deixar só o documento. A janela continua com as bordas e os botões
+normais do sistema, então pode ser movida, minimizada e fechada como qualquer outra.
 
-- Passe o mouse no **topo** da janela para mostrar o cabeçalho e arraste-o para
-  mover a janela.
-- O **canto inferior direito** tem um apoio para redimensionar.
-- `F10`, `Esc` ou **✥** voltam ao modo normal, restaurando a barra de tarefas e o
-  tamanho e a posição originais.
-- Enquanto o modo foco está ativo, a janela fica acima das demais para não se
-  perder atrás de outros programas.
-- No **Windows**, a barra de tarefas é ocultada e volta ao sair do modo foco (ou ao
-  fechar o aplicativo). No macOS e no Linux, o painel do sistema continua visível.
+Para trazer a barra de volta, pressione `F10` novamente. A escolha se mantém ao
+trocar de página, de tema ou de arquivo.
 
 ### Converter para um arquivo escuro
 
@@ -175,9 +168,9 @@ uv run pdf-dark protegido.pdf --password "minha-senha"
 | --- | --- |
 | `Ctrl+O` | Abrir um PDF |
 | `D` | Alternar entre claro e escuro |
-| `F10` | Entrar ou sair do modo foco (janela sem bordas e sem barra de tarefas) |
+| `F10` | Ocultar ou mostrar a barra de ferramentas do aplicativo |
 | `F11` | Entrar ou sair do modo imersivo |
-| `Esc` | Fechar o painel de conversão, sair da tela cheia ou do modo foco |
+| `Esc` | Fechar o painel de conversão ou sair da tela cheia |
 | `Ctrl` `+` / `Ctrl` `-` | Aumentar ou diminuir o zoom |
 | `Ctrl+0` | Ajustar à largura |
 | `PgUp` / `PgDn`, `←` / `→`, `Espaço` | Página anterior / próxima |
@@ -301,8 +294,7 @@ src/pdf_dark/
 | Arquivo muito grande | Use `--dpi 120` e reduza `--quality`. |
 | Texto serrilhado | Aumente `--dpi` para 200 ou mais. |
 | Fotos ficaram escuras | Elas são vetoriais ou parte de uma página digitalizada; não há como preservar só a foto. |
-| A barra de tarefas não voltou | Saia do modo foco com `F10`/`Esc` ou feche o aplicativo. Se o processo foi encerrado à força, reinicie o Windows Explorer (Gerenciador de Tarefas → Reiniciar). |
-| O cabeçalho perdeu botões | A janela está estreita: aumente-a ou use `F10` para o modo foco. |
+| O cabeçalho perdeu botões | A janela está estreita: aumente-a para mostrar todos os controles. |
 | Acentos estranhos no terminal | Use o Windows Terminal ou `chcp 65001`. |
 | `UnicodeDecodeError` ao rodar `uv run` no Windows | A pasta do projeto tem acentos e o Python é anterior ao 3.13. Mova o projeto para um caminho sem acentos ou use o Python 3.13+. |
 

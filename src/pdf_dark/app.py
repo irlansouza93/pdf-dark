@@ -90,7 +90,7 @@ class StartScreen(tk.Frame):
 
         tk.Label(
             wrap,
-            text="Ctrl+O  abrir      D  tema      F10  janela limpa      F11  tela cheia",
+            text="Ctrl+O  abrir      D  tema      F10  ocultar barra      F11  tela cheia",
             bg=READER_BG,
             fg="#5c6274",
             font=ui_font(9),
@@ -428,13 +428,7 @@ class App(tk.Tk):
 
         self._file: Path | None = None
         self._fullscreen = False
-        self._focus_mode = False
-        self._focus_geometry: str | None = None
-        self._focus_header_job: str | None = None
-        self._focus_header_visible = False
-        self._drag_offset: tuple[int, int] | None = None
-        self._resize_origin: tuple[int, int, int, int] | None = None
-        self._taskbar_hidden = False
+        self._toolbar_hidden = False
         self._sheet_open = False
         self._sheet_width = SHEET_WIDTH
         self._overlay: Pill | None = None
@@ -452,7 +446,6 @@ class App(tk.Tk):
         self.update_idletasks()
         apply_dark_titlebar(self)
         set_app_icon(self)
-        self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.deiconify()
         self.bind("<Map>", lambda _event: apply_dark_titlebar(self))
 
@@ -515,10 +508,10 @@ class App(tk.Tk):
             self.header, "⛶", self.toggle_fullscreen, padx=9, size=14
         )
         self.full_btn.pack(side="right", padx=(0, 14), pady=7)
-        self.focus_btn = FlatButton(
-            self.header, "✥", self.toggle_focus, padx=9, size=13
+        self.toolbar_btn = FlatButton(
+            self.header, "⌃", self.hide_toolbar, padx=9, size=15
         )
-        self.focus_btn.pack(side="right", pady=7, padx=(0, 2))
+        self.toolbar_btn.pack(side="right", pady=7, padx=(0, 2))
 
         self.reader_actions = tk.Frame(self.header, bg=BG)
         actions = self.reader_actions
@@ -532,19 +525,6 @@ class App(tk.Tk):
         self.fit_btn = FlatButton(actions, "Ajustar", self.fit_width)
         self._action_sep2 = tk.Frame(actions, bg=BORDER, width=1)
         self.convert_btn = FlatButton(actions, "Converter", self.open_sheet, fg=ACCENT)
-
-        self._drag_widgets = [
-            self.header,
-            left,
-            self.wordmark,
-            first,
-            second,
-            self.filename,
-            self.page_label,
-        ]
-        for widget in self._drag_widgets:
-            widget.bind("<ButtonPress-1>", self._drag_start, add="+")
-            widget.bind("<B1-Motion>", self._drag_move, add="+")
 
         self.body = tk.Frame(self, bg=READER_BG)
         self.body.pack(fill="both", expand=True)
@@ -562,20 +542,25 @@ class App(tk.Tk):
             on_notify=self.toast,
         )
 
-        self.grip = tk.Canvas(
-            self.body,
-            width=18,
-            height=18,
-            bg=READER_BG,
-            highlightthickness=0,
-            bd=0,
-            cursor="size_nw_se",
-        )
-        self.grip.create_line(7, 16, 16, 7, fill=MUTED)
-        self.grip.create_line(11, 16, 16, 11, fill=MUTED)
-        self.grip.create_line(14, 16, 16, 14, fill=MUTED)
-        self.grip.bind("<ButtonPress-1>", self._resize_start, add="+")
-        self.grip.bind("<B1-Motion>", self._resize_move, add="+")
+    # ------------------------------------------------------------------ #
+    # Barra de ferramentas ocultável
+    # ------------------------------------------------------------------ #
+    def hide_toolbar(self) -> None:
+        self._set_toolbar_hidden(True)
+
+    def toggle_toolbar(self) -> str:
+        self._set_toolbar_hidden(not self._toolbar_hidden)
+        return "break"
+
+    def _set_toolbar_hidden(self, hidden: bool) -> None:
+        if hidden == self._toolbar_hidden:
+            return
+        self._toolbar_hidden = hidden
+        if hidden:
+            self.header.pack_forget()
+            self.toast("Barra de ferramentas oculta · F10 para mostrar", ms=3800)
+        elif not self._fullscreen:
+            self.header.pack(side="top", fill="x", before=self.body)
 
     # ------------------------------------------------------------------ #
     # Cabeçalho responsivo
@@ -783,15 +768,14 @@ class App(tk.Tk):
     # Modo imersivo / tela cheia
     # ------------------------------------------------------------------ #
     def toggle_fullscreen(self) -> str:
-        if self._focus_mode:
-            self._exit_focus()
         self._fullscreen = not self._fullscreen
         self.attributes("-fullscreen", self._fullscreen)
         if self._fullscreen:
             self.header.pack_forget()
             self.after(220, self._show_overlay)
         else:
-            self.header.pack(side="top", fill="x", before=self.body)
+            if not self._toolbar_hidden:
+                self.header.pack(side="top", fill="x", before=self.body)
             self._hide_overlay()
         return "break"
 
@@ -844,165 +828,11 @@ class App(tk.Tk):
             self._overlay.place_forget()
         self._overlay_job = None
 
-    # ------------------------------------------------------------------ #
-    # Modo foco: janela limpa, sem bordas e ainda movível
-    # ------------------------------------------------------------------ #
-    def toggle_focus(self) -> str:
-        if self._focus_mode:
-            self._exit_focus()
-        else:
-            if self._fullscreen:
-                self.toggle_fullscreen()
-            self._enter_focus()
-        return "break"
-
-    def _enter_focus(self) -> None:
-        if self._focus_mode:
-            return
-        if self._sheet_open:
-            self.close_sheet()
-        self._focus_mode = True
-        self._focus_geometry = self.geometry()
-        self._hide_focus_header()
-        self.header.pack_forget()
-        self.overrideredirect(True)
-        self.attributes("-topmost", True)
-        self._set_taskbar_visible(False)
-        for widget in self._drag_widgets:
-            widget.configure(cursor="fleur")
-        self.grip.place(relx=1.0, rely=1.0, anchor="se", x=-3, y=-3)
-        tk.Misc.lift(self.grip)
-        self._show_focus_header()
-        self.toast(
-            "Modo foco: passe o mouse no topo para mover · ✥, F10 ou Esc para sair",
-            ms=4200,
-        )
-
-    def _exit_focus(self) -> None:
-        if not self._focus_mode:
-            return
-        self._hide_focus_header()
-        self._focus_mode = False
-        self.grip.place_forget()
-        for widget in self._drag_widgets:
-            widget.configure(cursor="")
-        self.overrideredirect(False)
-        self.attributes("-topmost", False)
-        self._set_taskbar_visible(True)
-        self.header.pack(side="top", fill="x", before=self.body)
-        if self._focus_geometry:
-            self.update_idletasks()
-            self.geometry(self._focus_geometry)
-        self.update_idletasks()
-        apply_dark_titlebar(self)
-
-    def _show_focus_header(self) -> None:
-        if not self._focus_mode:
-            return
-        if not self._focus_header_visible:
-            self.header.place(in_=self.body, x=0, y=0, relwidth=1.0)
-            self._focus_header_visible = True
-        tk.Misc.lift(self.header)
-        self._arm_focus_header()
-
-    def _arm_focus_header(self) -> None:
-        if self._focus_header_job is not None:
-            try:
-                self.after_cancel(self._focus_header_job)
-            except tk.TclError:
-                pass
-        self._focus_header_job = self.after(2400, self._hide_focus_header)
-
-    def _hide_focus_header(self) -> None:
-        if self._focus_header_job is not None:
-            try:
-                self.after_cancel(self._focus_header_job)
-            except tk.TclError:
-                pass
-            self._focus_header_job = None
-        if self._focus_header_visible:
-            self.header.place_forget()
-            self._focus_header_visible = False
-
-    def _drag_start(self, event: tk.Event) -> None:
-        if not self._focus_mode:
-            return
-        self._drag_offset = (
-            event.x_root - self.winfo_x(),
-            event.y_root - self.winfo_y(),
-        )
-
-    def _drag_move(self, event: tk.Event) -> None:
-        if not self._focus_mode or self._drag_offset is None:
-            return
-        x = event.x_root - self._drag_offset[0]
-        y = event.y_root - self._drag_offset[1]
-        x = max(0, min(x, self.winfo_screenwidth() - 120))
-        y = max(0, min(y, self.winfo_screenheight() - 80))
-        self.geometry(f"+{x}+{y}")
-
-    def _resize_start(self, event: tk.Event) -> None:
-        self._resize_origin = (
-            event.x_root,
-            event.y_root,
-            self.winfo_width(),
-            self.winfo_height(),
-        )
-
-    def _resize_move(self, event: tk.Event) -> None:
-        if self._resize_origin is None:
-            return
-        x0, y0, width, height = self._resize_origin
-        width = max(560, width + event.x_root - x0)
-        height = max(380, height + event.y_root - y0)
-        self.geometry(f"{width}x{height}")
-
-    def _set_taskbar_visible(self, visible: bool) -> None:
-        """Oculta/mostra a barra de tarefas do Windows enquanto o modo foco dura."""
-        if sys.platform != "win32":
-            return
-        try:
-            import ctypes
-            from ctypes import wintypes
-
-            user32 = ctypes.windll.user32
-            handles: list[int] = []
-            callback_type = ctypes.WINFUNCTYPE(
-                ctypes.c_bool, wintypes.HWND, wintypes.LPARAM
-            )
-
-            def collect(hwnd, _lparam):
-                buffer = ctypes.create_unicode_buffer(64)
-                user32.GetClassNameW(hwnd, buffer, 64)
-                if buffer.value in ("Shell_TrayWnd", "Shell_SecondaryTrayWnd"):
-                    handles.append(hwnd)
-                return True
-
-            user32.EnumWindows(callback_type(collect), 0)
-            if visible:
-                if not self._taskbar_hidden:
-                    return
-            for hwnd in handles:
-                user32.ShowWindow(hwnd, 5 if visible else 0)
-            self._taskbar_hidden = bool(handles) and not visible
-        except Exception:  # pragma: no cover - depende do Windows
-            pass
-
-    def destroy(self) -> None:
-        self._set_taskbar_visible(True)
-        super().destroy()
-
     def _on_motion(self, event: tk.Event) -> None:
-        if self._fullscreen:
-            self._show_overlay()
-            self._arm_overlay()
+        if not self._fullscreen:
             return
-        if self._focus_mode:
-            top = event.y_root - self.winfo_rooty()
-            if 0 <= top <= 80:
-                self._show_focus_header()
-            elif self._focus_header_visible and top > 120:
-                self._hide_focus_header()
+        self._show_overlay()
+        self._arm_overlay()
 
     # ------------------------------------------------------------------ #
     # Atalhos
@@ -1012,7 +842,7 @@ class App(tk.Tk):
         self.bind("<Control-O>", lambda _event: self._key(self.open_dialog))
         self.bind("d", lambda _event: self._key(self.toggle_dark))
         self.bind("D", lambda _event: self._key(self.toggle_dark))
-        self.bind("<F10>", lambda _event: self.toggle_focus())
+        self.bind("<F10>", lambda _event: self.toggle_toolbar())
         self.bind("<F11>", lambda _event: self.toggle_fullscreen())
         self.bind("<Escape>", lambda _event: self._key(self._escape))
         self.bind("<Control-plus>", lambda _event: self._key(self.zoom_in))
@@ -1042,8 +872,6 @@ class App(tk.Tk):
             self.close_sheet()
         elif self._fullscreen:
             self.toggle_fullscreen()
-        elif self._focus_mode:
-            self._exit_focus()
 
     def _goto(self, index: int) -> None:
         if self._file and not self._sheet_open:
