@@ -131,6 +131,8 @@ e sem a barra de tarefas, mantendo a liberdade de mover a janela pela tela:
   tamanho e a posição originais.
 - Enquanto o modo foco está ativo, a janela fica acima das demais para não se
   perder atrás de outros programas.
+- No **Windows**, a barra de tarefas é ocultada e volta ao sair do modo foco (ou ao
+  fechar o aplicativo). No macOS e no Linux, o painel do sistema continua visível.
 
 ### Converter para um arquivo escuro
 
