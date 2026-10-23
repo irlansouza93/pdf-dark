@@ -341,6 +341,173 @@ class Pill(tk.Canvas):
 
 
 # ---------------------------------------------------------------------- #
+# Botão de chevrons (ícone vetorial)
+# ---------------------------------------------------------------------- #
+class ChevronButton(tk.Canvas):
+    """Botão compacto com chevrons desenhados, sem depender da fonte do sistema."""
+
+    def __init__(
+        self,
+        master: tk.Misc,
+        command: Callable[[], None],
+        *,
+        direction: str = "up",
+        bg: str = BG,
+        width: int = 32,
+        height: int = 28,
+        radius: int = 7,
+    ) -> None:
+        super().__init__(
+            master, width=width, height=height, bg=bg,
+            highlightthickness=0, bd=0, cursor="hand2",
+        )
+        self._command = command
+        self._direction = direction
+        self._width = width
+        self._height = height
+        self._radius = radius
+        self._hover = False
+        self.bind("<Enter>", lambda _event: self._set_hover(True))
+        self.bind("<Leave>", lambda _event: self._set_hover(False))
+        self.bind("<Button-1>", lambda _event: self._draw(pressed=True))
+        self.bind("<ButtonRelease-1>", self._on_release)
+        self._draw()
+
+    def _set_hover(self, hover: bool) -> None:
+        self._hover = hover
+        self._draw()
+
+    def _on_release(self, event: tk.Event) -> None:
+        inside = 0 <= event.x <= self._width and 0 <= event.y <= self._height
+        self._draw()
+        if inside:
+            self._command()
+
+    def _draw(self, pressed: bool = False) -> None:
+        self.delete("all")
+        width, height = self._width, self._height
+        if pressed:
+            fill, color = mix(SURFACE, ACCENT, 0.22), ACCENT
+        elif self._hover:
+            fill, color = SURFACE_HOVER, TEXT
+        else:
+            fill, color = "", MUTED
+        if fill:
+            rounded_rect(
+                self, 0.5, 0.5, width - 0.5, height - 0.5, self._radius,
+                fill=fill, outline="",
+            )
+        sign = -1 if self._direction == "up" else 1
+        for offset in (-4, 4):
+            y = height / 2 + offset
+            self.create_line(
+                width / 2 - 5.5, y - 2.5 * sign,
+                width / 2, y + 2.5 * sign,
+                width / 2 + 5.5, y - 2.5 * sign,
+                fill=color, width=1.7, capstyle="round", joinstyle="round",
+            )
+
+
+# ---------------------------------------------------------------------- #
+# Pílula flutuante para restaurar a barra de ferramentas
+# ---------------------------------------------------------------------- #
+class RevealPill(tk.Canvas):
+    """Botão em forma de pílula que aparece sobre o documento."""
+
+    def __init__(
+        self,
+        master: tk.Misc,
+        text: str,
+        command: Callable[[], None],
+        *,
+        bg: str = READER_BG,
+        padx: int = 12,
+        pady: int = 5,
+        size: int = 9,
+    ) -> None:
+        self._text = text
+        self._command = command
+        self._font = ui_font(size)
+        self._padx = padx
+        self._icon = 10
+        self._gap = 7
+        width = padx * 2 + self._icon + self._gap + self._font.measure(text)
+        height = self._font.metrics("linespace") + pady * 2
+        super().__init__(
+            master, width=width, height=height, bg=bg,
+            highlightthickness=0, bd=0, cursor="hand2",
+        )
+        self._width = width
+        self._height = height
+        self._hover = False
+        self.bind("<Enter>", lambda _event: self._set_hover(True))
+        self.bind("<Leave>", lambda _event: self._set_hover(False))
+        self.bind("<Button-1>", lambda _event: self._draw(pressed=True))
+        self.bind("<ButtonRelease-1>", self._on_release)
+        self._draw()
+
+    def _set_hover(self, hover: bool) -> None:
+        self._hover = hover
+        self._draw()
+
+    def _on_release(self, event: tk.Event) -> None:
+        inside = 0 <= event.x <= self._width and 0 <= event.y <= self._height
+        self._draw()
+        if inside:
+            self._command()
+
+    def _draw(self, pressed: bool = False) -> None:
+        self.delete("all")
+        width, height = self._width, self._height
+        if pressed:
+            fill, outline, color = mix(SURFACE, ACCENT, 0.25), ACCENT, TEXT
+        elif self._hover:
+            fill, outline, color = SURFACE_HOVER, ACCENT, TEXT
+        else:
+            fill, outline, color = SURFACE, BORDER, SOFT
+        top = 0.5
+        bottom = height - 0.5
+        diameter = height - 1
+        self.create_oval(
+            0.5, top, 0.5 + diameter, bottom, fill=fill, outline="",
+        )
+        self.create_oval(
+            width - 0.5 - diameter, top, width - 0.5, bottom, fill=fill, outline="",
+        )
+        self.create_rectangle(
+            0.5 + diameter / 2, top, width - 0.5 - diameter / 2, bottom,
+            fill=fill, outline="",
+        )
+        self.create_arc(
+            0.5, top, 0.5 + diameter, bottom, start=90, extent=180,
+            style="arc", outline=outline, width=1,
+        )
+        self.create_arc(
+            width - 0.5 - diameter, top, width - 0.5, bottom, start=270, extent=180,
+            style="arc", outline=outline, width=1,
+        )
+        self.create_line(
+            0.5 + diameter / 2, top, width - 0.5 - diameter / 2, top,
+            fill=outline, width=1,
+        )
+        self.create_line(
+            0.5 + diameter / 2, bottom, width - 0.5 - diameter / 2, bottom,
+            fill=outline, width=1,
+        )
+        center = height / 2
+        start = self._padx
+        self.create_line(
+            start, center - 2.5, start + 4.5, center + 2, start + 9, center - 2.5,
+            fill=color if self._hover or pressed else MUTED,
+            width=1.6, capstyle="round", joinstyle="round",
+        )
+        self.create_text(
+            self._padx + self._icon + self._gap, center, text=self._text,
+            anchor="w", fill=color, font=self._font,
+        )
+
+
+# ---------------------------------------------------------------------- #
 # Barra de título escura no Windows
 # ---------------------------------------------------------------------- #
 def apply_dark_titlebar(window: tk.Misc) -> None:

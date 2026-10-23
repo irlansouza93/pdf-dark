@@ -36,7 +36,7 @@ livro.pdf  ──►  leitor escuro  ──►  livro-dark.pdf
 - **Leitor embutido** com canvas próprio: rolagem contínua, zoom, ajuste à largura
   e modo imersivo em tela cheia (F11), com barra flutuante que se esconde sozinha.
 - **Barra de ferramentas ocultável (F10)**: esconda a barra do aplicativo para ler
-  sem distrações; as bordas normais da janela continuam disponíveis.
+  sem distrações; uma pílula **Mostrar barra** no topo devolve os controles.
 - **Alternância ao vivo** entre o PDF original e o modo escuro, sem reabrir o arquivo.
 - **Interface escura e minimalista**, com barras discretas e sem distrações.
 - **Conversão integrada**: um painel lateral exporta o PDF com o tema escolhido,
@@ -107,8 +107,8 @@ aparece em modo escuro; a barra superior concentra o essencial:
 - **● Escuro / ○ Claro** alterna o documento ao vivo (`D`).
 - **− 100% +** controla o zoom e **Ajustar** volta a página à largura da janela.
 - **Converter** abre o painel de exportação.
-- **⌃** esconde a barra de ferramentas do aplicativo (`F10`); use `F10` novamente
-  para mostrá-la.
+- O botão de **recolher barra** (dois chevrons, à direita) esconde a barra do
+  aplicativo (`F10`); uma pílula **Mostrar barra** no topo traz os controles de volta.
 - **⛶** entra no modo imersivo (`F11`), com a barra flutuante que aparece ao mover
   o mouse e se esconde após alguns segundos.
 - Arraste a página com o mouse para navegar quando estiver com zoom; a roda rola e
@@ -120,12 +120,15 @@ página para manter os controles essenciais visíveis.
 
 ### Ocultar a barra de ferramentas
 
-Pressione `F10` (ou clique em **⌃** no canto direito da barra) para esconder a barra
-do aplicativo e deixar só o documento. A janela continua com as bordas e os botões
-normais do sistema, então pode ser movida, minimizada e fechada como qualquer outra.
+Pressione `F10` (ou clique no botão de **dois chevrons** no canto direito da barra)
+para esconder a barra do aplicativo e deixar só o documento. A janela continua com
+as bordas e os botões normais do sistema, então pode ser movida, minimizada e
+fechada como qualquer outra. Se o painel de conversão estiver aberto, ele se fecha
+junto.
 
-Para trazer a barra de volta, pressione `F10` novamente. A escolha se mantém ao
-trocar de página, de tema ou de arquivo.
+Enquanto a barra está oculta, uma pílula **Mostrar barra** fica no topo do
+documento: clique nela, pressione `F10` ou `Esc` para trazer os controles de volta.
+A escolha se mantém ao trocar de página, de tema ou de arquivo.
 
 ### Converter para um arquivo escuro
 
@@ -170,7 +173,7 @@ uv run pdf-dark protegido.pdf --password "minha-senha"
 | `D` | Alternar entre claro e escuro |
 | `F10` | Ocultar ou mostrar a barra de ferramentas do aplicativo |
 | `F11` | Entrar ou sair do modo imersivo |
-| `Esc` | Fechar o painel de conversão ou sair da tela cheia |
+| `Esc` | Fechar o painel de conversão, sair da tela cheia ou mostrar a barra de ferramentas |
 | `Ctrl` `+` / `Ctrl` `-` | Aumentar ou diminuir o zoom |
 | `Ctrl+0` | Ajustar à largura |
 | `PgUp` / `PgDn`, `←` / `→`, `Espaço` | Página anterior / próxima |

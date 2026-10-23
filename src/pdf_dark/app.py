@@ -29,9 +29,11 @@ from .widgets import (
     SURFACE_ALT,
     TEXT,
     ChipGroup,
+    ChevronButton,
     FlatButton,
     Pill,
     PrimaryButton,
+    RevealPill,
     apply_dark_titlebar,
     rounded_rect,
     set_app_icon,
@@ -508,8 +510,8 @@ class App(tk.Tk):
             self.header, "⛶", self.toggle_fullscreen, padx=9, size=14
         )
         self.full_btn.pack(side="right", padx=(0, 14), pady=7)
-        self.toolbar_btn = FlatButton(
-            self.header, "⌃", self.hide_toolbar, padx=9, size=15
+        self.toolbar_btn = ChevronButton(
+            self.header, self.hide_toolbar, direction="up"
         )
         self.toolbar_btn.pack(side="right", pady=7, padx=(0, 2))
 
@@ -542,11 +544,18 @@ class App(tk.Tk):
             on_notify=self.toast,
         )
 
+        self.reveal_pill = RevealPill(
+            self.body, "Mostrar barra", self.show_toolbar
+        )
+
     # ------------------------------------------------------------------ #
     # Barra de ferramentas ocultável
     # ------------------------------------------------------------------ #
     def hide_toolbar(self) -> None:
         self._set_toolbar_hidden(True)
+
+    def show_toolbar(self) -> None:
+        self._set_toolbar_hidden(False)
 
     def toggle_toolbar(self) -> str:
         self._set_toolbar_hidden(not self._toolbar_hidden)
@@ -557,10 +566,23 @@ class App(tk.Tk):
             return
         self._toolbar_hidden = hidden
         if hidden:
+            if self._sheet_open:
+                self.close_sheet()
             self.header.pack_forget()
-            self.toast("Barra de ferramentas oculta · F10 para mostrar", ms=3800)
-        elif not self._fullscreen:
-            self.header.pack(side="top", fill="x", before=self.body)
+            self._show_reveal()
+        else:
+            self._hide_reveal()
+            if not self._fullscreen:
+                self.header.pack(side="top", fill="x", before=self.body)
+
+    def _show_reveal(self) -> None:
+        if self._fullscreen or not self._toolbar_hidden:
+            return
+        self.reveal_pill.place(relx=0.5, y=10, anchor="n")
+        tk.Misc.lift(self.reveal_pill)
+
+    def _hide_reveal(self) -> None:
+        self.reveal_pill.place_forget()
 
     # ------------------------------------------------------------------ #
     # Cabeçalho responsivo
@@ -753,6 +775,7 @@ class App(tk.Tk):
             width=self._sheet_width,
         )
         self.sheet.lift()
+        self._hide_reveal()
         reserve = self._sheet_width if width >= self._sheet_width + 280 else 0
         self.viewer.pack_configure(padx=(0, reserve))
         self._show_reader_actions(True)
@@ -763,6 +786,7 @@ class App(tk.Tk):
         self._sheet_open = False
         self.sheet.place_forget()
         self.viewer.pack_configure(padx=0)
+        self._show_reveal()
 
     # ------------------------------------------------------------------ #
     # Modo imersivo / tela cheia
@@ -771,10 +795,13 @@ class App(tk.Tk):
         self._fullscreen = not self._fullscreen
         self.attributes("-fullscreen", self._fullscreen)
         if self._fullscreen:
+            self._hide_reveal()
             self.header.pack_forget()
             self.after(220, self._show_overlay)
         else:
-            if not self._toolbar_hidden:
+            if self._toolbar_hidden:
+                self._show_reveal()
+            else:
                 self.header.pack(side="top", fill="x", before=self.body)
             self._hide_overlay()
         return "break"
@@ -872,6 +899,8 @@ class App(tk.Tk):
             self.close_sheet()
         elif self._fullscreen:
             self.toggle_fullscreen()
+        elif self._toolbar_hidden:
+            self._set_toolbar_hidden(False)
 
     def _goto(self, index: int) -> None:
         if self._file and not self._sheet_open:
