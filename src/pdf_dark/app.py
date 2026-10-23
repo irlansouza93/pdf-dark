@@ -90,7 +90,7 @@ class StartScreen(tk.Frame):
 
         tk.Label(
             wrap,
-            text="Ctrl+O  abrir      D  tema      F11  tela cheia",
+            text="Ctrl+O  abrir      D  tema      F10  janela limpa      F11  tela cheia",
             bg=READER_BG,
             fg="#5c6274",
             font=ui_font(9),
@@ -424,15 +424,25 @@ class App(tk.Tk):
         self.withdraw()
         self.title(f"PDF Dark {__version__}")
         self.configure(bg=BG)
-        self.minsize(900, 560)
+        self.minsize(560, 380)
 
         self._file: Path | None = None
         self._fullscreen = False
+        self._focus_mode = False
+        self._focus_geometry: str | None = None
+        self._focus_header_job: str | None = None
+        self._focus_header_visible = False
+        self._drag_offset: tuple[int, int] | None = None
+        self._resize_origin: tuple[int, int, int, int] | None = None
+        self._taskbar_hidden = False
         self._sheet_open = False
+        self._sheet_width = SHEET_WIDTH
         self._overlay: Pill | None = None
         self._overlay_job: str | None = None
         self._toast: tk.Frame | None = None
         self._toast_job: str | None = None
+        self._header_flags: tuple[bool, ...] = (True, True, True, True, True)
+        self._actions_visible = False
 
         self._build_style()
         self._build()
@@ -442,6 +452,7 @@ class App(tk.Tk):
         self.update_idletasks()
         apply_dark_titlebar(self)
         set_app_icon(self)
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.deiconify()
         self.bind("<Map>", lambda _event: apply_dark_titlebar(self))
 
@@ -471,18 +482,23 @@ class App(tk.Tk):
     def _build(self) -> None:
         self.header = tk.Frame(self, bg=BG)
         self.header.pack(side="top", fill="x")
-        tk.Frame(self, bg=BORDER, height=1).pack(side="top", fill="x")
+        self.header.bind("<Configure>", self._on_header_configure)
+
+        line = tk.Frame(self.header, bg=BORDER, height=1)
+        line.pack(side="bottom", fill="x")
 
         left = tk.Frame(self.header, bg=BG)
         left.pack(side="left", padx=(18, 0), pady=7)
-        wordmark = tk.Frame(left, bg=BG)
-        wordmark.pack(side="left")
-        tk.Label(
-            wordmark, text="PDF ", bg=BG, fg=TEXT, font=ui_font(11, "bold")
-        ).pack(side="left")
-        tk.Label(
-            wordmark, text="Dark", bg=BG, fg=ACCENT, font=ui_font(11, "bold")
-        ).pack(side="left")
+        self.wordmark = tk.Frame(left, bg=BG)
+        self.wordmark.pack(side="left")
+        first = tk.Label(
+            self.wordmark, text="PDF ", bg=BG, fg=TEXT, font=ui_font(11, "bold")
+        )
+        first.pack(side="left")
+        second = tk.Label(
+            self.wordmark, text="Dark", bg=BG, fg=ACCENT, font=ui_font(11, "bold")
+        )
+        second.pack(side="left")
         self.filename = tk.Label(
             left, text="", bg=BG, fg=MUTED, font=ui_font(9)
         )
@@ -499,24 +515,36 @@ class App(tk.Tk):
             self.header, "⛶", self.toggle_fullscreen, padx=9, size=14
         )
         self.full_btn.pack(side="right", padx=(0, 14), pady=7)
+        self.focus_btn = FlatButton(
+            self.header, "✥", self.toggle_focus, padx=9, size=13
+        )
+        self.focus_btn.pack(side="right", pady=7, padx=(0, 2))
 
         self.reader_actions = tk.Frame(self.header, bg=BG)
         actions = self.reader_actions
         self.theme_btn = FlatButton(actions, "● Escuro", self.toggle_dark, active=True)
-        self.theme_btn.pack(side="left")
-        self._divider(actions)
-        FlatButton(actions, "−", self.zoom_out, padx=9, size=12).pack(side="left")
+        self._action_sep1 = tk.Frame(actions, bg=BORDER, width=1)
+        self._zoom_out_btn = FlatButton(actions, "−", self.zoom_out, padx=9, size=12)
         self.zoom_label = tk.Label(
             actions, text="100%", bg=BG, fg=MUTED, font=ui_font(9), width=5
         )
-        self.zoom_label.pack(side="left")
-        FlatButton(actions, "+", self.zoom_in, padx=9, size=11).pack(side="left")
-        FlatButton(actions, "Ajustar", self.fit_width).pack(side="left", padx=(4, 0))
-        self._divider(actions)
-        self.convert_btn = FlatButton(
-            actions, "Converter", self.open_sheet, fg=ACCENT
-        )
-        self.convert_btn.pack(side="left")
+        self._zoom_in_btn = FlatButton(actions, "+", self.zoom_in, padx=9, size=11)
+        self.fit_btn = FlatButton(actions, "Ajustar", self.fit_width)
+        self._action_sep2 = tk.Frame(actions, bg=BORDER, width=1)
+        self.convert_btn = FlatButton(actions, "Converter", self.open_sheet, fg=ACCENT)
+
+        self._drag_widgets = [
+            self.header,
+            left,
+            self.wordmark,
+            first,
+            second,
+            self.filename,
+            self.page_label,
+        ]
+        for widget in self._drag_widgets:
+            widget.bind("<ButtonPress-1>", self._drag_start, add="+")
+            widget.bind("<B1-Motion>", self._drag_move, add="+")
 
         self.body = tk.Frame(self, bg=READER_BG)
         self.body.pack(fill="both", expand=True)
@@ -534,17 +562,98 @@ class App(tk.Tk):
             on_notify=self.toast,
         )
 
-    def _divider(self, parent: tk.Misc) -> None:
-        tk.Frame(parent, bg=BORDER, width=1).pack(
-            side="left", fill="y", padx=8, pady=12
+        self.grip = tk.Canvas(
+            self.body,
+            width=18,
+            height=18,
+            bg=READER_BG,
+            highlightthickness=0,
+            bd=0,
+            cursor="size_nw_se",
         )
+        self.grip.create_line(7, 16, 16, 7, fill=MUTED)
+        self.grip.create_line(11, 16, 16, 11, fill=MUTED)
+        self.grip.create_line(14, 16, 16, 14, fill=MUTED)
+        self.grip.bind("<ButtonPress-1>", self._resize_start, add="+")
+        self.grip.bind("<B1-Motion>", self._resize_move, add="+")
+
+    # ------------------------------------------------------------------ #
+    # Cabeçalho responsivo
+    # ------------------------------------------------------------------ #
+    def _on_header_configure(self, event: tk.Event) -> None:
+        if event.width > 1:
+            self._layout_header(event.width)
+
+    def _layout_header(self, width: int) -> None:
+        """Mostra ou esconde itens conforme a janela fica estreita."""
+        flags = (
+            width >= 620,   # rótulo do zoom
+            width >= 640,   # marca "PDF Dark"
+            width >= 880,   # botão "Ajustar"
+            width >= 1060,  # nome do arquivo
+            width >= 680,   # indicador de página
+        )
+        if flags == self._header_flags:
+            return
+        self._header_flags = flags
+        self._paint_left()
+        if flags[4]:
+            self.page_label.place(relx=0.5, rely=0.5, anchor="center")
+        else:
+            self.page_label.place_forget()
+        self._layout_actions()
+
+    def _paint_left(self) -> None:
+        show_mark = self._header_flags[1]
+        show_name = self._header_flags[3]
+        for widget in (self.wordmark, self.filename, self.open_btn):
+            widget.pack_forget()
+        if show_mark:
+            self.wordmark.pack(side="left")
+        if show_name:
+            self.filename.pack(side="left", padx=(10, 0))
+        self.open_btn.pack(side="left", padx=(14, 0))
+
+    def _layout_actions(self) -> None:
+        """Reorganiza os controles do leitor na ordem, escondendo os menos essenciais."""
+        if not self._actions_visible:
+            return
+        show_zoom = self._header_flags[0]
+        show_fit = self._header_flags[2]
+        items: list[tuple[tk.Widget, dict]] = [
+            (self.theme_btn, {}),
+            (self._action_sep1, {"fill": "y", "padx": 8, "pady": 12}),
+            (self._zoom_out_btn, {}),
+        ]
+        if show_zoom:
+            items.append((self.zoom_label, {}))
+        items.append((self._zoom_in_btn, {}))
+        if show_fit:
+            items.append((self.fit_btn, {"padx": (4, 0)}))
+        items += [
+            (self._action_sep2, {"fill": "y", "padx": 8, "pady": 12}),
+            (self.convert_btn, {}),
+        ]
+        for widget in (
+            self.theme_btn,
+            self._action_sep1,
+            self._zoom_out_btn,
+            self.zoom_label,
+            self._zoom_in_btn,
+            self.fit_btn,
+            self._action_sep2,
+            self.convert_btn,
+        ):
+            widget.pack_forget()
+        for widget, options in items:
+            widget.pack(side="left", **options)
 
     def _center(self) -> None:
         self.update_idletasks()
         screen_w = self.winfo_screenwidth()
         screen_h = self.winfo_screenheight()
-        width = min(1180, max(900, screen_w - 120))
-        height = min(800, max(560, screen_h - 140))
+        width = min(1180, max(560, screen_w - 120))
+        height = min(800, max(380, screen_h - 140))
         x = max(0, (screen_w - width) // 2)
         y = max(0, (screen_h - height) // 2 - 24)
         self.geometry(f"{width}x{height}+{x}+{y}")
@@ -604,11 +713,14 @@ class App(tk.Tk):
                     )
 
     def _show_reader_actions(self, visible: bool) -> None:
-        mapped = bool(self.reader_actions.winfo_ismapped())
-        if visible and not mapped:
-            self.reader_actions.pack(side="right", pady=7, padx=(0, 4))
-        elif not visible and mapped:
+        if visible:
+            if not self._actions_visible:
+                self.reader_actions.pack(side="right", pady=7, padx=(0, 4))
+                self._actions_visible = True
+            self._layout_actions()
+        elif self._actions_visible:
             self.reader_actions.pack_forget()
+            self._actions_visible = False
 
     # ------------------------------------------------------------------ #
     # Ações do leitor
@@ -645,12 +757,19 @@ class App(tk.Tk):
             return
         if self._fullscreen:
             self.toggle_fullscreen()
+        width = max(560, self.winfo_width())
+        self._sheet_width = min(SHEET_WIDTH, max(320, width - 48))
         self._sheet_open = True
         self.sheet.place(
-            relx=1.0, rely=0.0, anchor="ne", relheight=1.0, width=SHEET_WIDTH
+            relx=1.0,
+            rely=0.0,
+            anchor="ne",
+            relheight=1.0,
+            width=self._sheet_width,
         )
         self.sheet.lift()
-        self.viewer.pack_configure(padx=(0, SHEET_WIDTH))
+        reserve = self._sheet_width if width >= self._sheet_width + 280 else 0
+        self.viewer.pack_configure(padx=(0, reserve))
         self._show_reader_actions(True)
 
     def close_sheet(self) -> None:
@@ -664,6 +783,8 @@ class App(tk.Tk):
     # Modo imersivo / tela cheia
     # ------------------------------------------------------------------ #
     def toggle_fullscreen(self) -> str:
+        if self._focus_mode:
+            self._exit_focus()
         self._fullscreen = not self._fullscreen
         self.attributes("-fullscreen", self._fullscreen)
         if self._fullscreen:
@@ -723,11 +844,165 @@ class App(tk.Tk):
             self._overlay.place_forget()
         self._overlay_job = None
 
-    def _on_motion(self, event: tk.Event) -> None:
-        if not self._fullscreen:
+    # ------------------------------------------------------------------ #
+    # Modo foco: janela limpa, sem bordas e ainda movível
+    # ------------------------------------------------------------------ #
+    def toggle_focus(self) -> str:
+        if self._focus_mode:
+            self._exit_focus()
+        else:
+            if self._fullscreen:
+                self.toggle_fullscreen()
+            self._enter_focus()
+        return "break"
+
+    def _enter_focus(self) -> None:
+        if self._focus_mode:
             return
-        self._show_overlay()
-        self._arm_overlay()
+        if self._sheet_open:
+            self.close_sheet()
+        self._focus_mode = True
+        self._focus_geometry = self.geometry()
+        self._hide_focus_header()
+        self.header.pack_forget()
+        self.overrideredirect(True)
+        self.attributes("-topmost", True)
+        self._set_taskbar_visible(False)
+        for widget in self._drag_widgets:
+            widget.configure(cursor="fleur")
+        self.grip.place(relx=1.0, rely=1.0, anchor="se", x=-3, y=-3)
+        tk.Misc.lift(self.grip)
+        self._show_focus_header()
+        self.toast(
+            "Modo foco: passe o mouse no topo para mover · ✥, F10 ou Esc para sair",
+            ms=4200,
+        )
+
+    def _exit_focus(self) -> None:
+        if not self._focus_mode:
+            return
+        self._hide_focus_header()
+        self._focus_mode = False
+        self.grip.place_forget()
+        for widget in self._drag_widgets:
+            widget.configure(cursor="")
+        self.overrideredirect(False)
+        self.attributes("-topmost", False)
+        self._set_taskbar_visible(True)
+        self.header.pack(side="top", fill="x", before=self.body)
+        if self._focus_geometry:
+            self.update_idletasks()
+            self.geometry(self._focus_geometry)
+        self.update_idletasks()
+        apply_dark_titlebar(self)
+
+    def _show_focus_header(self) -> None:
+        if not self._focus_mode:
+            return
+        if not self._focus_header_visible:
+            self.header.place(in_=self.body, x=0, y=0, relwidth=1.0)
+            self._focus_header_visible = True
+        tk.Misc.lift(self.header)
+        self._arm_focus_header()
+
+    def _arm_focus_header(self) -> None:
+        if self._focus_header_job is not None:
+            try:
+                self.after_cancel(self._focus_header_job)
+            except tk.TclError:
+                pass
+        self._focus_header_job = self.after(2400, self._hide_focus_header)
+
+    def _hide_focus_header(self) -> None:
+        if self._focus_header_job is not None:
+            try:
+                self.after_cancel(self._focus_header_job)
+            except tk.TclError:
+                pass
+            self._focus_header_job = None
+        if self._focus_header_visible:
+            self.header.place_forget()
+            self._focus_header_visible = False
+
+    def _drag_start(self, event: tk.Event) -> None:
+        if not self._focus_mode:
+            return
+        self._drag_offset = (
+            event.x_root - self.winfo_x(),
+            event.y_root - self.winfo_y(),
+        )
+
+    def _drag_move(self, event: tk.Event) -> None:
+        if not self._focus_mode or self._drag_offset is None:
+            return
+        x = event.x_root - self._drag_offset[0]
+        y = event.y_root - self._drag_offset[1]
+        x = max(0, min(x, self.winfo_screenwidth() - 120))
+        y = max(0, min(y, self.winfo_screenheight() - 80))
+        self.geometry(f"+{x}+{y}")
+
+    def _resize_start(self, event: tk.Event) -> None:
+        self._resize_origin = (
+            event.x_root,
+            event.y_root,
+            self.winfo_width(),
+            self.winfo_height(),
+        )
+
+    def _resize_move(self, event: tk.Event) -> None:
+        if self._resize_origin is None:
+            return
+        x0, y0, width, height = self._resize_origin
+        width = max(560, width + event.x_root - x0)
+        height = max(380, height + event.y_root - y0)
+        self.geometry(f"{width}x{height}")
+
+    def _set_taskbar_visible(self, visible: bool) -> None:
+        """Oculta/mostra a barra de tarefas do Windows enquanto o modo foco dura."""
+        if sys.platform != "win32":
+            return
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            user32 = ctypes.windll.user32
+            handles: list[int] = []
+            callback_type = ctypes.WINFUNCTYPE(
+                ctypes.c_bool, wintypes.HWND, wintypes.LPARAM
+            )
+
+            def collect(hwnd, _lparam):
+                buffer = ctypes.create_unicode_buffer(64)
+                user32.GetClassNameW(hwnd, buffer, 64)
+                if buffer.value in ("Shell_TrayWnd", "Shell_SecondaryTrayWnd"):
+                    handles.append(hwnd)
+                return True
+
+            user32.EnumWindows(callback_type(collect), 0)
+            if visible:
+                if not self._taskbar_hidden:
+                    return
+            for hwnd in handles:
+                user32.ShowWindow(hwnd, 5 if visible else 0)
+            self._taskbar_hidden = bool(handles) and not visible
+        except Exception:  # pragma: no cover - depende do Windows
+            pass
+
+    def destroy(self) -> None:
+        self._set_taskbar_visible(True)
+        super().destroy()
+
+    def _on_motion(self, event: tk.Event) -> None:
+        if self._fullscreen:
+            self._show_overlay()
+            self._arm_overlay()
+            return
+        if self._focus_mode:
+            top = event.y_root - self.winfo_rooty()
+            if 0 <= top <= 80:
+                self._show_focus_header()
+            elif self._focus_header_visible and top > 120:
+                self._hide_focus_header()
 
     # ------------------------------------------------------------------ #
     # Atalhos
@@ -737,6 +1012,7 @@ class App(tk.Tk):
         self.bind("<Control-O>", lambda _event: self._key(self.open_dialog))
         self.bind("d", lambda _event: self._key(self.toggle_dark))
         self.bind("D", lambda _event: self._key(self.toggle_dark))
+        self.bind("<F10>", lambda _event: self.toggle_focus())
         self.bind("<F11>", lambda _event: self.toggle_fullscreen())
         self.bind("<Escape>", lambda _event: self._key(self._escape))
         self.bind("<Control-plus>", lambda _event: self._key(self.zoom_in))
@@ -766,6 +1042,8 @@ class App(tk.Tk):
             self.close_sheet()
         elif self._fullscreen:
             self.toggle_fullscreen()
+        elif self._focus_mode:
+            self._exit_focus()
 
     def _goto(self, index: int) -> None:
         if self._file and not self._sheet_open:
